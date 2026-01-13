@@ -3,6 +3,7 @@ from email.message import EmailMessage
 from flask import current_app, render_template
 from datetime import datetime
 from app.utils.mailer import send_email
+from app.models.user import User
 
 COMPANY_NAME = "Academic Hub"
 
