@@ -15,6 +15,12 @@ from app.models.notification import Notification
 from app.extensions import db
 from datetime import datetime
 
+from app.services.notification_service import (
+    send_notification_to_user,
+    send_notification_to_group,
+    send_notification_to_all
+)
+
 bp = Blueprint("notifications", __name__, url_prefix="/api/v1/notifications")
 
 def admin_required(user):
@@ -32,43 +38,30 @@ def send_notification():
     title = data.get("title")
     message = data.get("message")
     notif_type = data.get("type", "info")
-    recipients = data.get("recipients", "all")  # 'all' | 'writers' | 'clients' | 'user'
+    recipients = data.get("recipients", "all")
     user_email = data.get("user_email")
 
     if not title or not message:
-        return error_response("VALIDATION_ERROR", "Title and message are required", status=400)
+        return error_response("VALIDATION_ERROR", "Title and message are required", 400)
 
-    notif = Notification(
-        sender_id=uid,
-        type=notif_type,
-        title=title,
-        message=message,
-        created_at=datetime.utcnow(),
-    )
-
-    # Determine target type
     if recipients == "user" and user_email:
-        user = User.query.filter_by(email=user_email).first()
-        if not user:
-            return error_response("NOT_FOUND", "User not found", status=404)
-        notif.target_type = "individual"
-        notif.user_email = user.email
+        notif = send_notification_to_user(user_email, title, message, notif_type, sender_id=uid)
+        if not notif:
+            return error_response("NOT_FOUND", "User not found", 404)
+        return success_response({
+            "message": "Notification sent successfully (individual)",
+            "notification_id": notif.id,
+        })
     elif recipients in ["writers", "clients"]:
-        notif.target_type = "group"
-        notif.target_group = recipients
+        count = send_notification_to_group(recipients, title, message, notif_type, sender_id=uid)
+        return success_response({
+            "message": f"Notification sent successfully to {count} users (group: {recipients})",
+        })
     else:
-        notif.target_type = "all"
-        notif.target_group = "all"
-
-    db.session.add(notif)
-    db.session.commit()
-
-    return success_response({
-        "message": f"Notification sent successfully ({notif.target_type})",
-        "target_type": notif.target_type,
-        "target_group": notif.target_group,
-        "notification_id": notif.id,
-    })
+        count = send_notification_to_all(title, message, notif_type, sender_id=uid)
+        return success_response({
+            "message": f"Notification sent successfully to {count} users (all)",
+        })
 
 
 @bp.route("", methods=["GET"])
