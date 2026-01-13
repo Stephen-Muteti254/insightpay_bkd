@@ -20,6 +20,12 @@ def mark_all_read_for_user(user_id):
     db.session.commit()
     return updated
 
+ROLE_MAP = {
+    "clients": "client",
+    "writers": "writer",
+}
+
+
 def send_notification_to_user(
     email: str,
     title: str,
@@ -28,6 +34,10 @@ def send_notification_to_user(
     details=None,
     sender_id=None
 ):
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return None
+
     notif = Notification(
         sender_id=sender_id,
         user_email=email,
@@ -44,15 +54,24 @@ def send_notification_to_user(
     send_notification_email(user, title, message)
     return notif
 
-
 def send_notification_to_group(group, title, message, notif_type="info", details=None, sender_id=None):
-    users = User.query.filter_by(role=group).all()
+    role = ROLE_MAP.get(group)
+
+    if not role:
+        return 0
+
+    users = User.query.filter_by(role=role).all()
+
+    print(
+        f"Sending group notification: group={group}, resolved_role={role}, users={len(users)}"
+    )
+
     for u in users:
         notif = Notification(
             sender_id=sender_id,
-            user_id=u.id,
+            user_email=u.email,
             target_type="group",
-            target_group=group,
+            target_group=role,
             type=notif_type,
             title=title,
             message=message,
