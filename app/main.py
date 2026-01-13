@@ -3,6 +3,8 @@ from .config import DevelopmentConfig, ProductionConfig
 from .extensions import db, migrate, jwt, ma, cors, bcrypt
 import os
 from flask_cors import CORS
+import os
+from app.config import Config
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -18,6 +20,18 @@ def create_app(config_name=None):
         app.config.from_object(ProductionConfig)
     else:
         app.config.from_object(DevelopmentConfig)
+
+
+    UPLOAD_DIRS = [
+        Config.UPLOAD_FOLDER,
+        Config.ORDERS_FOLDER,
+        Config.SUBMISSIONS_FOLDER,
+        Config.SUPPORT_UPLOADS_FOLDER,
+        Config.PROFILES_FOLDER,
+    ]
+
+    for path in UPLOAD_DIRS:
+        os.makedirs(path, exist_ok=True)
 
     # initialize extensions
     db.init_app(app)

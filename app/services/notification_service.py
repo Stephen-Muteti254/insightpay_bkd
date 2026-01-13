@@ -92,7 +92,7 @@ def send_notification_to_all(title, message, notif_type="info", details=None, se
     for u in users:
         notif = Notification(
             sender_id=sender_id,
-            user_id=u.id,
+            user_email=u.email,
             target_type="all",
             target_group="all",
             type=notif_type,

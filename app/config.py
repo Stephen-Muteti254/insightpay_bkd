@@ -25,11 +25,13 @@ class Config:
     REFRESH_EXPIRES = int(os.getenv("REFRESH_EXPIRES", 86400))
     basedir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
-    UPLOAD_FOLDER = os.path.join(basedir, "uploads/applications")
-    ORDERS_FOLDER = os.path.join(basedir, "uploads/orders")
-    SUBMISSIONS_FOLDER = os.path.join(basedir, "uploads/submissions")
-    SUPPORT_UPLOADS_FOLDER = os.path.join(basedir, "uploads/support_chats")
-    PROFILES_FOLDER = os.path.join(basedir, "uploads/profiles")
+    UPLOAD_ROOT = os.getenv("UPLOAD_ROOT", "/var/data/uploads")
+
+    UPLOAD_FOLDER = os.path.join(UPLOAD_ROOT, "applications")
+    ORDERS_FOLDER = os.path.join(UPLOAD_ROOT, "orders")
+    SUBMISSIONS_FOLDER = os.path.join(UPLOAD_ROOT, "submissions")
+    SUPPORT_UPLOADS_FOLDER = os.path.join(UPLOAD_ROOT, "support_chats")
+    PROFILES_FOLDER = os.path.join(UPLOAD_ROOT, "profiles")
 
     WRITER_PAYOUT_PERCENTAGE = 0.30
     PAYSTACK_SECRET_KEY = "sk_live_e3c9231206431254561a88cd7d12b50098fe21f6"
