@@ -1,0 +1,10 @@
+{% extends "emails/base.html" %}
+
+{% block content %}
+  <div style="max-width:600px;margin:0 auto;padding:20px;font-family:sans-serif;color:#333;background:#f9f9f9;border-radius:8px;">
+    <h2 style="color:#111;font-size:20px;margin-bottom:10px;">{{ title }}</h2>
+    <p style="font-size:16px;line-height:1.5;">Hi {{ full_name }},</p>
+    <p style="font-size:16px;line-height:1.5;">{{ message }}</p>
+    <p style="font-size:14px;color:#666;margin-top:20px;">© {{ year }} {{ company_name }}. All rights reserved.</p>
+  </div>
+{% endblock %}

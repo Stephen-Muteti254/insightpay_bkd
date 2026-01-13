@@ -213,3 +213,28 @@ def send_login_otp_email(user, otp):
         current_app.logger.error(
             f"Failed to send OTP email to user_id={user.id}: {str(e)}"
         )
+
+
+def send_notification_email(user: User, title: str, message: str):
+    """
+    Send a notification email to a single user.
+    """
+    try:
+        html = render_template(
+            "emails/notification.html",
+            full_name=user.full_name,
+            title=title,
+            message=message,
+            company_name=COMPANY_NAME,
+            year=datetime.utcnow().year,
+        )
+
+        send_email(
+            to=user.email,
+            subject=title,
+            html=html
+        )
+
+        current_app.logger.info(f"Notification email sent to user_id={user.id}")
+    except Exception as e:
+        current_app.logger.error(f"Failed to send notification email to user_id={user.id}: {str(e)}")

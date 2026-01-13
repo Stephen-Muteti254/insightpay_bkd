@@ -2,6 +2,7 @@ from app.extensions import db
 from app.models.notification import Notification
 from app.models.user import User
 from datetime import datetime
+from app.services.email_service import send_notification_email
 
 def get_user_notifications(user_id, is_read=None):
     q = Notification.query.filter_by(user_id=user_id)
@@ -39,6 +40,8 @@ def send_notification_to_user(
     )
     db.session.add(notif)
     db.session.commit()
+
+    send_notification_email(user, title, message)
     return notif
 
 
@@ -57,6 +60,10 @@ def send_notification_to_group(group, title, message, notif_type="info", details
             created_at=datetime.utcnow(),
         )
         db.session.add(notif)
+
+        # Send email
+        send_notification_email(u, title, message)
+
     db.session.commit()
     return len(users)
 
@@ -76,5 +83,9 @@ def send_notification_to_all(title, message, notif_type="info", details=None, se
             created_at=datetime.utcnow(),
         )
         db.session.add(notif)
+
+        # Send email
+        send_notification_email(u, title, message)
+
     db.session.commit()
     return len(users)

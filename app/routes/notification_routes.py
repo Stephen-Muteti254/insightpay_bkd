@@ -17,7 +17,6 @@ from datetime import datetime
 
 bp = Blueprint("notifications", __name__, url_prefix="/api/v1/notifications")
 
-
 def admin_required(user):
     return user and user.role.lower() == "admin"
 
