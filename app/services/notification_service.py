@@ -66,21 +66,20 @@ def send_notification_to_group(group, title, message, notif_type="info", details
         f"Sending group notification: group={group}, resolved_role={role}, users={len(users)}"
     )
 
-    for u in users:
-        notif = Notification(
-            sender_id=sender_id,
-            user_email=u.email,
-            target_type="group",
-            target_group=role,
-            type=notif_type,
-            title=title,
-            message=message,
-            details=details,
-            created_at=datetime.utcnow(),
-        )
-        db.session.add(notif)
 
-        # Send email
+    notif = Notification(
+        sender_id=sender_id,
+        target_type="group",
+        target_group=role,
+        type=notif_type,
+        title=title,
+        message=message,
+        details=details,
+        created_at=datetime.utcnow(),
+    )
+    db.session.add(notif)
+
+    for u in users:
         send_notification_email(u, title, message)
 
     db.session.commit()
@@ -88,22 +87,22 @@ def send_notification_to_group(group, title, message, notif_type="info", details
 
 
 def send_notification_to_all(title, message, notif_type="info", details=None, sender_id=None):
-    users = User.query.all()
-    for u in users:
-        notif = Notification(
-            sender_id=sender_id,
-            user_email=u.email,
-            target_type="all",
-            target_group="all",
-            type=notif_type,
-            title=title,
-            message=message,
-            details=details,
-            created_at=datetime.utcnow(),
-        )
-        db.session.add(notif)
+    notif = Notification(
+        sender_id=sender_id,
+        user_email=u.email,
+        target_type="all",
+        target_group="all",
+        type=notif_type,
+        title=title,
+        message=message,
+        details=details,
+        created_at=datetime.utcnow(),
+    )
+    db.session.add(notif)
 
-        # Send email
+    users = User.query.all()
+    
+    for u in users:
         send_notification_email(u, title, message)
 
     db.session.commit()
