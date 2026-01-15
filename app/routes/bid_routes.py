@@ -474,26 +474,20 @@ def client_update_bid_status(bid_id):
                 "You have been assigned as the writer."
             )
 
-            send_bid_accepted_email(writer, bid.order)
+            
 
-        else:
-            title = "Your Bid Was Rejected"
-            message = (
-                f"Your bid for {bid.order.id} ({bid.order.title}) has been rejected by the client."
+            send_notification_to_user(
+                email=writer.email,
+                title=title,
+                message=message,
+                notif_type="bid_update",
+                details={
+                    "order_id": bid.order_id,
+                    "bid_id": bid.id,
+                    "status": action,
+                },
+                sender_id=client_id,
             )
-
-        send_notification_to_user(
-            email=writer.email,
-            title=title,
-            message=message,
-            notif_type="bid_update",
-            details={
-                "order_id": bid.order_id,
-                "bid_id": bid.id,
-                "status": action,
-            },
-            sender_id=client_id,
-        )
 
     return success_response({"message": f"Bid {action}ed successfully"})
 

@@ -42,6 +42,7 @@ def send_notification():
     notif_type = data.get("type", "info")
     recipients = data.get("recipients", "all")
     user_email = data.get("user_email")
+    sender_team = data.get("sender_team", "Support Team")
 
     if not title or not message:
         return error_response("VALIDATION_ERROR", "Title and message are required", 400)
@@ -55,10 +56,10 @@ def send_notification():
             return error_response("NOT_FOUND", "User not found", 404)
 
         notif = send_notification_to_user(
-            user_email, title, message, notif_type, sender_id=uid
+            user_email, title, message, notif_type, sender_id=uid, sender_team=sender_team
         )
 
-        send_notification_email(user, title, message)
+        send_notification_email(user, title, message, sender_team=sender_team)
 
         return success_response({
             "message": "Notification sent successfully (individual)",
@@ -67,7 +68,7 @@ def send_notification():
 
     elif recipients in ["writers", "clients"]:
         count = send_notification_to_group(
-            recipients, title, message, notif_type, sender_id=uid
+            recipients, title, message, notif_type, sender_id=uid, sender_team=sender_team
         )
         return success_response({
             "message": f"Notification sent successfully to {count} users (group: {recipients})",
@@ -75,7 +76,7 @@ def send_notification():
 
     else:
         count = send_notification_to_all(
-            title, message, notif_type, sender_id=uid
+            title, message, notif_type, sender_id=uid, sender_team=sender_team
         )
         return success_response({
             "message": f"Notification sent successfully to {count} users (all)",

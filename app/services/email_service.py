@@ -7,6 +7,19 @@ from app.models.user import User
 
 COMPANY_NAME = "Academic Hub"
 
+from markupsafe import Markup
+
+def format_message(message: str):
+    """
+    Converts a message string into safe HTML for emails.
+    Replaces newlines with <br> and ensures HTML tags are rendered safely.
+    """
+    # Replace newlines with <br>
+    safe_msg = message.replace("\n", "<br>")
+    # Wrap as Markup so Jinja does not escape it again
+    return Markup(safe_msg)
+
+
 def send_verification_email(user, token):
     verify_url = f"{current_app.config['FRONTEND_URL']}/verify-email?token={token}"
     html = render_template(
@@ -226,16 +239,19 @@ def send_login_otp_email(user, otp):
         )
 
 
-def send_notification_email(user: User, title: str, message: str):
-    """
-    Send a notification email to a single user.
-    """
+def send_notification_email(
+    user: User,
+    title: str,
+    message: str,
+    sender_team: str
+):
     try:
         html = render_template(
             "emails/notification.html",
             full_name=user.full_name,
             title=title,
-            message=message,
+            message=format_message(message),
+            sender_team=sender_team,
             company_name=COMPANY_NAME,
             year=datetime.utcnow().year,
         )
@@ -245,7 +261,7 @@ def send_notification_email(user: User, title: str, message: str):
             subject=title,
             html=html
         )
-
-        current_app.logger.info(f"Notification email sent to user_id={user.id}")
     except Exception as e:
-        current_app.logger.error(f"Failed to send notification email to user_id={user.id}: {str(e)}")
+        current_app.logger.error(
+            f"Failed to send notification email to user_id={user.id}: {e}"
+        )

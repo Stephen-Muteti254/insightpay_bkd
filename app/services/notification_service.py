@@ -27,12 +27,13 @@ ROLE_MAP = {
 
 
 def send_notification_to_user(
-    email: str,
-    title: str,
-    message: str,
+    email,
+    title,
+    message,
     notif_type="info",
     details=None,
-    sender_id=None
+    sender_id=None,
+    sender_team="Support Team"
 ):
     user = User.query.filter_by(email=email).first()
     if not user:
@@ -50,20 +51,31 @@ def send_notification_to_user(
     )
     db.session.add(notif)
     db.session.commit()
+
+    send_notification_email(
+        user,
+        title,
+        message,
+        sender_team=sender_team
+    )
+
     return notif
 
-def send_notification_to_group(group, title, message, notif_type="info", details=None, sender_id=None):
-    role = ROLE_MAP.get(group)
 
+def send_notification_to_group(
+    group,
+    title,
+    message,
+    notif_type="info",
+    details=None,
+    sender_id=None,
+    sender_team="Support Team"
+):
+    role = ROLE_MAP.get(group)
     if not role:
         return 0
 
     users = User.query.filter_by(role=role).all()
-
-    print(
-        f"Sending group notification: group={group}, resolved_role={role}, users={len(users)}"
-    )
-
 
     notif = Notification(
         sender_id=sender_id,
@@ -78,16 +90,28 @@ def send_notification_to_group(group, title, message, notif_type="info", details
     db.session.add(notif)
 
     for u in users:
-        send_notification_email(u, title, message)
+        send_notification_email(
+            u,
+            title,
+            message,
+            sender_team=sender_team
+        )
 
     db.session.commit()
     return len(users)
 
 
-def send_notification_to_all(title, message, notif_type="info", details=None, sender_id=None):
+
+def send_notification_to_all(
+    title,
+    message,
+    notif_type="info",
+    details=None,
+    sender_id=None,
+    sender_team="Support Team"
+):
     notif = Notification(
         sender_id=sender_id,
-        user_email=u.email,
         target_type="all",
         target_group="all",
         type=notif_type,
@@ -99,9 +123,14 @@ def send_notification_to_all(title, message, notif_type="info", details=None, se
     db.session.add(notif)
 
     users = User.query.all()
-    
     for u in users:
-        send_notification_email(u, title, message)
+        send_notification_email(
+            u,
+            title,
+            message,
+            sender_team=sender_team
+        )
 
     db.session.commit()
     return len(users)
+
