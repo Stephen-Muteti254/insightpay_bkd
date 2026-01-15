@@ -75,7 +75,18 @@ def send_notification_to_group(
     if not role:
         return 0
 
-    users = User.query.filter_by(role=role).all()
+    # If writers, filter by paid initial deposit
+    if role == "writer":
+        users = User.query.filter_by(
+            role="writer",
+            account_status="paid_initial_deposit"
+        ).all()
+    else:
+        # For clients, no deposit check
+        users = User.query.filter_by(role=role).all()
+
+    if not users:
+        return 0
 
     notif = Notification(
         sender_id=sender_id,
@@ -101,7 +112,6 @@ def send_notification_to_group(
     return len(users)
 
 
-
 def send_notification_to_all(
     title,
     message,
@@ -110,6 +120,14 @@ def send_notification_to_all(
     sender_id=None,
     sender_team="Support Team"
 ):
+    # All users except writers who haven't paid
+    users = User.query.filter(
+        (User.role != "writer") | (User.account_status == "paid_initial_deposit")
+    ).all()
+
+    if not users:
+        return 0
+
     notif = Notification(
         sender_id=sender_id,
         target_type="all",
@@ -122,7 +140,6 @@ def send_notification_to_all(
     )
     db.session.add(notif)
 
-    users = User.query.all()
     for u in users:
         send_notification_email(
             u,
@@ -133,4 +150,3 @@ def send_notification_to_all(
 
     db.session.commit()
     return len(users)
-

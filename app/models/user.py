@@ -13,7 +13,7 @@ class User(db.Model):
     email = db.Column(db.String(255), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
     full_name = db.Column(db.String(255))
-    role = db.Column(db.String(50), nullable=False)
+    role = db.Column(db.String(50), nullable=False, default="unknown")
     profile_image = db.Column(db.String(1024), nullable=True)
     rating = db.Column(db.Float, default=0.0)
     completed_orders = db.Column(db.Integer, default=0)

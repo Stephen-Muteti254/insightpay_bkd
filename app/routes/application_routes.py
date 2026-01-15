@@ -193,7 +193,6 @@ def approve_application(application_id):
         user = app.user
         user.application_status = "awaiting_initial_deposit"
         user.account_status = "awaiting_initial_deposit"
-        user.role = "writer"
 
         db.session.commit()
 
