@@ -42,6 +42,8 @@ def send_application_received_email(user):
 
 
 def send_application_approved_email(user, feedback=None):
+    onboarding_url = f"{current_app.config['FRONTEND_URL']}/writer"
+
     try:
         send_email(
             to=user.email,
@@ -51,11 +53,15 @@ def send_application_approved_email(user, feedback=None):
                 title="Application Approved",
                 full_name=user.full_name,
                 feedback=feedback,
+                onboarding_url=onboarding_url,
                 company_name=COMPANY_NAME,
+                year=datetime.utcnow().year,
             ),
         )
     except Exception as e:
-        print(f"Failed to send email to {to}: {e}")
+        current_app.logger.error(
+            f"Failed to send approval email to {user.email}: {e}"
+        )
 
 
 def send_application_rejected_email(user, feedback=None):
@@ -69,10 +75,14 @@ def send_application_rejected_email(user, feedback=None):
                 full_name=user.full_name,
                 feedback=feedback,
                 company_name=COMPANY_NAME,
+                year=datetime.utcnow().year,
             ),
         )
     except Exception as e:
-        print(f"Failed to send email to {to}: {e}")
+        current_app.logger.error(
+            f"Failed to send rejection email to {user.email}: {e}"
+        )
+
 
 def send_deposit_approved_email(user):
     """

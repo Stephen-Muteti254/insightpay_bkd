@@ -15,8 +15,8 @@ from app.services.email_service import (
     send_application_approved_email,
     send_application_rejected_email,
     send_deposit_approved_email
-
 )
+from flask import current_app, render_template
 
 bp = Blueprint("applications", __name__, url_prefix="/api/v1/applications")
 
@@ -364,3 +364,32 @@ def confirm_initial_deposit(user_id):
     except Exception as e:
         db.session.rollback()
         return error_response("SERVER_ERROR", str(e), status=500)
+
+
+@bp.route("/_test/email/application-approved")
+def test_application_approved_email():
+    class DummyUser:
+        full_name = "Stephen Muteti"
+        email = "test@example.com"
+
+    return render_template(
+        "emails/application_approved.html",
+        title="Application Approved",
+        full_name="Test Writer",
+        feedback="Great academic background and strong samples.",
+        onboarding_url="https://academichubpro.com/writer",
+        company_name="Academic Hub",
+        year=datetime.utcnow().year,
+    )
+
+
+@bp.route("/_test/email/application-rejected")
+def test_application_rejected_email():
+    return render_template(
+        "emails/application_rejected.html",
+        title="Application Update",
+        full_name="Stephen Muteti",
+        feedback="Your samples need stronger academic formatting.",
+        company_name="Academic Hub",
+        year=datetime.utcnow().year,
+    )

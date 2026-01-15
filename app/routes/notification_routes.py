@@ -32,6 +32,7 @@ def admin_required(user):
 def send_notification():
     uid = get_jwt_identity()
     admin_user = User.query.get(uid)
+
     if not admin_required(admin_user):
         return error_response("FORBIDDEN", "Admin privileges required", status=403)
 
@@ -42,18 +43,20 @@ def send_notification():
     recipients = data.get("recipients", "all")
     user_email = data.get("user_email")
 
-    user = User.query.filter_by(email=email).first()
-    
-    if not user:
-        return None
-
     if not title or not message:
         return error_response("VALIDATION_ERROR", "Title and message are required", 400)
 
-    if recipients == "user" and user_email:
-        notif = send_notification_to_user(user_email, title, message, notif_type, sender_id=uid)
-        if not notif:
+    if recipients == "user":
+        if not user_email:
+            return error_response("VALIDATION_ERROR", "user_email is required", 400)
+
+        user = User.query.filter_by(email=user_email).first()
+        if not user:
             return error_response("NOT_FOUND", "User not found", 404)
+
+        notif = send_notification_to_user(
+            user_email, title, message, notif_type, sender_id=uid
+        )
 
         send_notification_email(user, title, message)
 
@@ -61,14 +64,19 @@ def send_notification():
             "message": "Notification sent successfully (individual)",
             "notification_id": notif.id,
         })
-    elif recipients in ["writers", "clients"]:
-        count = send_notification_to_group(recipients, title, message, notif_type, sender_id=uid)
 
+    elif recipients in ["writers", "clients"]:
+        count = send_notification_to_group(
+            recipients, title, message, notif_type, sender_id=uid
+        )
         return success_response({
             "message": f"Notification sent successfully to {count} users (group: {recipients})",
         })
+
     else:
-        count = send_notification_to_all(title, message, notif_type, sender_id=uid)
+        count = send_notification_to_all(
+            title, message, notif_type, sender_id=uid
+        )
         return success_response({
             "message": f"Notification sent successfully to {count} users (all)",
         })
