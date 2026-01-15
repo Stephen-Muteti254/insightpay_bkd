@@ -20,6 +20,7 @@ from app.services.notification_service import (
     send_notification_to_group,
     send_notification_to_all
 )
+from app.services.email_service import send_notification_email
 
 bp = Blueprint("notifications", __name__, url_prefix="/api/v1/notifications")
 
@@ -41,6 +42,11 @@ def send_notification():
     recipients = data.get("recipients", "all")
     user_email = data.get("user_email")
 
+    user = User.query.filter_by(email=email).first()
+    
+    if not user:
+        return None
+
     if not title or not message:
         return error_response("VALIDATION_ERROR", "Title and message are required", 400)
 
@@ -48,12 +54,16 @@ def send_notification():
         notif = send_notification_to_user(user_email, title, message, notif_type, sender_id=uid)
         if not notif:
             return error_response("NOT_FOUND", "User not found", 404)
+
+        send_notification_email(user, title, message)
+
         return success_response({
             "message": "Notification sent successfully (individual)",
             "notification_id": notif.id,
         })
     elif recipients in ["writers", "clients"]:
         count = send_notification_to_group(recipients, title, message, notif_type, sender_id=uid)
+
         return success_response({
             "message": f"Notification sent successfully to {count} users (group: {recipients})",
         })

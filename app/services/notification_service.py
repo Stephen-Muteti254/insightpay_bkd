@@ -50,8 +50,6 @@ def send_notification_to_user(
     )
     db.session.add(notif)
     db.session.commit()
-
-    send_notification_email(user, title, message)
     return notif
 
 def send_notification_to_group(group, title, message, notif_type="info", details=None, sender_id=None):

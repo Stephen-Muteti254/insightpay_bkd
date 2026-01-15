@@ -440,8 +440,6 @@ def client_update_bid_status(bid_id):
         order.writer_id = bid.user_id
         order.status = "in_progress"
 
-        send_bid_accepted_email(writer, bid.order)
-
         # Reject all other bids
         other_bids = (
             Bid.query
@@ -475,6 +473,9 @@ def client_update_bid_status(bid_id):
                 f"Your bid for {bid.order.id} ({bid.order.title}) has been accepted. "
                 "You have been assigned as the writer."
             )
+
+            send_bid_accepted_email(writer, bid.order)
+
         else:
             title = "Your Bid Was Rejected"
             message = (
