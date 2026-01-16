@@ -66,9 +66,12 @@ def login():
     user = authenticate_user(email, password)
 
     otp = generate_otp()
+
+    print(f"otp = {otp}")
+
     otp_record = LoginOTP(
         user_id=user.id,
-        otp_hash=hash_otp(otp),
+        otp_hash=otp,
         expires_at=otp_expiry(),
     )
 
