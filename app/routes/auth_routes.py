@@ -71,7 +71,7 @@ def login():
 
     otp_record = LoginOTP(
         user_id=user.id,
-        otp_hash=otp,
+        otp_hash=hash_otp(otp),
         expires_at=otp_expiry(),
     )
 
