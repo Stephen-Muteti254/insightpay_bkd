@@ -7,6 +7,7 @@ from app.models.writer_application import WriterApplication
 from sqlalchemy import func, desc
 from sqlalchemy.orm import aliased
 from sqlalchemy import case
+from sqlalchemy import func, desc, case, or_
 
 def build_leaderboard(limit=None):
     subquery = (
@@ -21,9 +22,7 @@ def build_leaderboard(limit=None):
     orders_count = func.count(Order.id)
 
     rating_col = case(
-        # If no completed orders → default 5
         (orders_count == 0, 5),
-        # Else use average rating (or 0 if NULL)
         else_=func.coalesce(subquery.c.avg_rating, 0)
     ).label("rating")
 
@@ -42,7 +41,13 @@ def build_leaderboard(limit=None):
             Order,
             (Order.writer_id == User.id) & (Order.status == "completed")
         )
-        .filter(WriterApplication.status == "approved")
+        .filter(
+            WriterApplication.status == "approved",
+            or_(
+                User.account_status == "paid_initial_deposit",
+                User.application_status == "paid_initial_deposit"
+            )
+        )
         .group_by(
             User.id,
             User.full_name,
