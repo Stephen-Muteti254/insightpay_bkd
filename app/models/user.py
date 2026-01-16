@@ -24,6 +24,7 @@ class User(db.Model):
     is_verified = db.Column(db.Boolean, default=False)
     country = db.Column(db.String(100), nullable=True)
     account_status = db.Column(db.String(50), default="awaiting_initial_deposit")
+    last_verification_sent_at = db.Column(db.DateTime, nullable=True)
 
     def to_dict(self):
         return {

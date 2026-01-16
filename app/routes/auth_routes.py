@@ -179,3 +179,40 @@ def verify_email():
         message="Email successfully verified",
         status=200
     )
+
+
+@bp.route("/resend-verification", methods=["POST"])
+@jwt_required()
+def resend_verification():
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+
+    if not user:
+        return error_response("NOT_FOUND", "User not found", 404)
+
+    if user.is_verified:
+        return error_response(
+            "ALREADY_VERIFIED",
+            "Email is already verified",
+            400
+        )
+
+    # OPTIONAL (recommended): rate limit resend
+    if user.last_verification_sent_at:
+        delta = (datetime.utcnow() - user.last_verification_sent_at).total_seconds()
+        if delta < 60:
+            return error_response(
+                "RATE_LIMITED",
+                "Please wait before requesting another verification email",
+                429
+            )
+
+    token = generate_email_verification_token(user.id)
+    send_verification_email(user, token)
+
+    user.last_verification_sent_at = datetime.utcnow()
+    db.session.commit()
+
+    return success_response(
+        message="Verification email resent successfully"
+    )
