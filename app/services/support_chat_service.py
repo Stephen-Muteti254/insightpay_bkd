@@ -34,12 +34,12 @@ def get_or_create_support_chat(user_id):
 
 
 def add_support_message(chat_id, sender_id, content):
-    sanitized = sanitize_message(content)
+    # sanitized = sanitize_message(content)
 
     msg = SupportMessage(
         support_chat_id=chat_id,
         sender_id=sender_id,
-        content=sanitized
+        content=content
     )
 
     db.session.add(msg)

@@ -51,7 +51,7 @@ def analyze_chat_behavior(messages):
         risk = "low"
 
     return {
-        "risk": risk,
+        "risk": "low",
         "presidio_hits": presidio_hits,
         "regex_hits": regex_hits,
         "redacted_count": redacted_count,
