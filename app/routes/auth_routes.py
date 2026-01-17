@@ -1,5 +1,7 @@
 from flask import Blueprint, request, current_app, render_template
 from datetime import datetime
+from app.utils.exceptions import ServiceError
+
 from app.services.auth_service import register_user, authenticate_user, generate_tokens_for_user
 from app.utils.response_formatter import success_response, error_response
 from app.extensions import db, jwt
@@ -19,6 +21,8 @@ from app.utils.otp import (
     verify_otp,
     otp_expiry
     )
+
+
 bp = Blueprint("auth", __name__, url_prefix="/api/v1/auth")
 
 @bp.route("/register", methods=["POST"])
@@ -64,7 +68,10 @@ def login():
     email = data.get("email")
     password = data.get("password")
 
-    user = authenticate_user(email, password)
+    try:
+        user = authenticate_user(email, password)
+    except ServiceError as e:
+        return error_response(e.code, e.message, status=401)
 
     otp = generate_otp()
 
