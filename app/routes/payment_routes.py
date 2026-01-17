@@ -6,7 +6,7 @@ from app.models.payment_method import PaymentMethod
 from app.extensions import db
 
 from decimal import Decimal
-import uuid
+import requests, uuid
 import hmac
 import hashlib
 from datetime import datetime
@@ -296,62 +296,85 @@ def init_order_payment():
     })
 
 
-@bp.route("", methods=["POST"])
+@bp.route("/webhooks/paystack", methods=["POST"])
 def handle_paystack_webhook():
     secret = current_app.config["PAYSTACK_SECRET_KEY"]
     signature = request.headers.get("x-paystack-signature")
-
     body = request.get_data()
 
-    computed = hmac.new(
-        secret.encode(),
-        body,
-        hashlib.sha512
-    ).hexdigest()
-
+    # Verify signature
+    computed = hmac.new(secret.encode(), body, hashlib.sha512).hexdigest()
     if not signature or computed != signature:
         return "Invalid signature", 401
 
     payload = request.json
+    event = payload.get("event")
+    data = payload.get("data", {})
+    meta = data.get("metadata", {})
 
-    if payload.get("event") == "charge.success":
-        data = payload["data"]
-        reference = data["reference"]
+    # Only handle wallet deposits
+    if meta.get("type") != "wallet_deposit":
+        return "OK", 200
 
-        meta = data.get("metadata", {})
+    uid = meta.get("user_id")
+    amount = Decimal(meta.get("amount", "0"))
+    reference = data.get("reference")
 
-        if meta.get("type") == "wallet_deposit":
-            uid = meta["user_id"]
-            amount = Decimal(meta["amount"])
+    # Check if transaction exists
+    tx = WalletTransaction.query.filter_by(reference_id=reference).first()
 
-            with db.session.begin():
-                credit_wallet(
-                    user_id=uid,
+    try:
+        if event == "charge.success":
+            if tx and tx.status == "completed":
+                # Already processed, avoid double credit
+                return "OK", 200
+
+            # Credit wallet and create transaction
+            credit_wallet(
+                user_id=uid,
+                amount=amount,
+                tx_type="deposit",
+                description="Wallet deposit via Paystack",
+                ref_type="paystack",
+                ref_id=reference
+            )
+
+            db.session.commit()
+            print(f"[WalletDeposit] User {uid} credited {amount} USD, reference={reference}")
+
+        elif event == "charge.failed":
+            if tx:
+                # Update existing transaction to failed
+                tx.status = "failed"
+                tx.description = "Wallet deposit failed"
+            else:
+                # Create failed transaction
+                tx = WalletTransaction(
+                    id=gen_tx_id(),
+                    wallet_id=get_or_create_wallet(uid).id,
                     amount=amount,
-                    tx_type="deposit",
-                    description="Wallet deposit via Paystack",
-                    ref_type="paystack",
-                    ref_id=data["reference"]
+                    type="deposit",
+                    reference_type="paystack",
+                    reference_id=reference,
+                    description="Wallet deposit failed",
+                    status="failed"
                 )
+                db.session.add(tx)
 
-        payment = OrderPayment.query.filter_by(reference=reference).first()
-        if not payment:
-            return "Payment not found", 404
+            db.session.commit()
+            print(f"[WalletDeposit][FAILED] User {uid}, reference={reference}")
 
-        # Idempotency guard
-        if payment.status == "success":
+        else:
+            # Ignore other events
             return "OK", 200
 
-        payment.status = "success"
-        payment.paid_at = datetime.utcnow()
-
-        order = Order.query.get(payment.order_id)
-        if order:
-            order.payment_status = "paid"
-
-        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        print(f"[WalletDeposit][ERROR] {e}")
+        return "Internal Server Error", 500
 
     return "OK", 200
+
 
 @bp.route("/wallet", methods=["GET"])
 @jwt_required()
@@ -421,19 +444,48 @@ def init_wallet_deposit():
     if amount <= 0:
         return error_response("INVALID_AMOUNT", "Invalid deposit amount", 400)
 
+    user = User.query.get(uid)
+    if not user:
+        return error_response("USER_NOT_FOUND", "User not found", 404)
+
     reference = f"wallet_{uid}_{uuid.uuid4().hex[:8]}"
 
-    return success_response({
-        "public_key": current_app.config["PAYSTACK_PUBLIC_KEY"],
-        "email": User.query.get(uid).email,
+    # PAYSTACK payload for hosted page
+    payload = {
+        "email": user.email,
         "amount": int(amount * 100),
         "currency": "USD",
         "reference": reference,
+        "callback_url": f"{current_app.config['FRONTEND_URL']}/client/wallet?deposit=success",
         "metadata": {
             "type": "wallet_deposit",
             "user_id": uid,
             "amount": str(amount)
         }
+    }
+
+    headers = {
+        "Authorization": f"Bearer {current_app.config['PAYSTACK_SECRET_KEY']}",
+        "Content-Type": "application/json",
+    }
+
+    # Call Paystack to initialize transaction
+    r = requests.post(
+        "https://api.paystack.co/transaction/initialize",
+        json=payload,
+        headers=headers
+    )
+
+    res = r.json()
+    print("Paystack init response →", res)
+
+    if not r.ok or not res.get("status"):
+        return error_response("PAYSTACK_INIT_FAILED", res.get("message", "Initialization failed"), 400)
+
+    # Return only authorization_url and reference to frontend
+    return success_response({
+        "authorization_url": res["data"]["authorization_url"],
+        "reference": res["data"]["reference"]
     })
 
 
@@ -461,13 +513,4 @@ def verify_wallet_deposit():
     if metadata.get("type") == "wallet_deposit":
         uid = metadata["user_id"]
         amount = Decimal(metadata["amount"])
-        with db.session.begin():
-            credit_wallet(
-                user_id=uid,
-                amount=amount,
-                tx_type="deposit",
-                description="Wallet deposit via Paystack",
-                ref_type="paystack",
-                ref_id=reference
-            )
     return success_response({"message": "Deposit verified"})
