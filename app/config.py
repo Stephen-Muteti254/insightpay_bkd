@@ -32,6 +32,7 @@ class Config:
     SUBMISSIONS_FOLDER = os.path.join(UPLOAD_ROOT, "submissions")
     SUPPORT_UPLOADS_FOLDER = os.path.join(UPLOAD_ROOT, "support_chats")
     PROFILES_FOLDER = os.path.join(UPLOAD_ROOT, "profiles")
+    CAREERS_UPLOAD_FOLDER = os.path.join(UPLOAD_ROOT, "careers")
 
     WRITER_PAYOUT_PERCENTAGE = 0.30
     PAYSTACK_SECRET_KEY = "sk_live_e3c9231206431254561a88cd7d12b50098fe21f6"

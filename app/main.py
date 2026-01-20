@@ -28,6 +28,7 @@ def create_app(config_name=None):
         Config.SUBMISSIONS_FOLDER,
         Config.SUPPORT_UPLOADS_FOLDER,
         Config.PROFILES_FOLDER,
+        Config.CAREERS_UPLOAD_FOLDER,
     ]
 
     for path in UPLOAD_DIRS:
@@ -38,7 +39,14 @@ def create_app(config_name=None):
     migrate.init_app(app, db)
     jwt.init_app(app)
     ma.init_app(app)
+
+
+    # parse env list for dev (localhost) and prod
     origins = [o.strip() for o in app.config["CORS_ORIGINS"].split(",")]
+
+    # Add regex for all subdomains of academichubpro.com
+    origins.append(r"https://.*\.academichubpro\.com")
+
     CORS(
         app,
         resources={r"/api/*": {"origins": origins}},
@@ -46,6 +54,7 @@ def create_app(config_name=None):
         allow_headers=["Content-Type", "Authorization"],
         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     )
+
     bcrypt.init_app(app)
     # limiter.init_app(app)
 
@@ -65,6 +74,7 @@ def create_app(config_name=None):
     from app.routes.user_routes import bp as user_bp
     from app.routes.submission_routes import bp as submission_bp
     from app.routes.support_chat_routes import bp as support_chat_bp
+    from app.routes.career_routes import bp as career_bp
 
     # available orders optional
     try:
@@ -88,6 +98,7 @@ def create_app(config_name=None):
     app.register_blueprint(user_bp)
     app.register_blueprint(submission_bp)
     app.register_blueprint(support_chat_bp)
+    app.register_blueprint(career_bp)
 
     # error handlers to match required error format
     from app.utils.response_formatter import error_response
