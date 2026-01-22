@@ -159,6 +159,8 @@ def me():
 
     account_state = build_account_state(user)
 
+    print(f"account_state = {account_state}")
+
     return success_response({
         **user.to_dict(),
         "account_state": account_state,

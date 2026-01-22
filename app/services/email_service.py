@@ -283,7 +283,7 @@ def send_account_suspension_email(
     try:
         send_email(
             to=user.email,
-            subject="Account Suspension Notice",
+            subject="Academic Hub Account Update",
             html=render_template(
                 "emails/account_suspended.html",
                 title="Account Suspension",
