@@ -2,11 +2,22 @@ from flask import Blueprint, request, current_app, render_template
 from datetime import datetime
 from app.utils.exceptions import ServiceError
 
-from app.services.auth_service import register_user, authenticate_user, generate_tokens_for_user
+from app.services.auth_service import (
+    register_user,
+    authenticate_user,
+    generate_tokens_for_user,
+    build_account_state
+)
+
 from app.utils.response_formatter import success_response, error_response
 from app.extensions import db, jwt
 from app.models.user import User
-from flask_jwt_extended import jwt_required, get_jwt_identity, unset_jwt_cookies
+from flask_jwt_extended import (
+    jwt_required,
+    get_jwt_identity,
+    unset_jwt_cookies
+)
+
 from app.utils.auth_utils import hash_password, check_password
 from app.utils.email_tokens import generate_email_verification_token
 from app.services.email_service import (
@@ -142,10 +153,16 @@ def logout():
 def me():
     uid = get_jwt_identity()
     user = User.query.get(uid)
-    if not user:
-        return error_response("NOT_FOUND", "User not found", status=404)
 
-    return success_response(user.to_dict())
+    if not user:
+        return error_response("NOT_FOUND", "User not found", 404)
+
+    account_state = build_account_state(user)
+
+    return success_response({
+        **user.to_dict(),
+        "account_state": account_state,
+    })
 
 
 @bp.route("/verify-email", methods=["POST"])

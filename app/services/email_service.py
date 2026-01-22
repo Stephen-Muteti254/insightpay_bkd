@@ -265,3 +265,57 @@ def send_notification_email(
         current_app.logger.error(
             f"Failed to send notification email to user_id={user.id}: {e}"
         )
+
+
+def send_account_suspension_email(
+    user,
+    suspension_type: str,
+    reasons: list,
+    notes: str = None,
+    suspended_until=None
+):
+    duration_text = (
+        suspended_until.strftime("%B %d, %Y")
+        if suspension_type == "temporary" and suspended_until
+        else "Indefinite"
+    )
+
+    try:
+        send_email(
+            to=user.email,
+            subject="Account Suspension Notice",
+            html=render_template(
+                "emails/account_suspended.html",
+                title="Account Suspension",
+                full_name=user.full_name,
+                suspension_type=suspension_type,
+                reasons=reasons,
+                notes=format_message(notes),
+                duration_text=duration_text,
+                company_name=COMPANY_NAME,
+                year=datetime.utcnow().year,
+            ),
+        )
+    except Exception as e:
+        current_app.logger.error(
+            f"Failed to send suspension email to {user.email}: {e}"
+        )
+
+
+def send_account_reactivated_email(user):
+    try:
+        send_email(
+            to=user.email,
+            subject="Your Academic Hub Account Has Been Reactivated",
+            html=render_template(
+                "emails/account_reactivated.html",
+                title="Account Reactivated",
+                full_name=user.full_name,
+                company_name=COMPANY_NAME,
+                year=datetime.utcnow().year,
+            ),
+        )
+    except Exception as e:
+        current_app.logger.error(
+            f"Failed to send reactivation email to {user.email}: {e}"
+        )

@@ -1,0 +1,47 @@
+{% extends "emails/base.html" %}
+
+{% block content %}
+<p>Hello <strong>{{ full_name }}</strong>,</p>
+
+<p>
+  We are writing to inform you that your <strong>Academic Hub writer account</strong>
+  has been <strong>{{ suspension_type | capitalize }} suspended</strong>.
+</p>
+
+<div class="notice" style="margin:20px 0; text-align:left;">
+  <strong>Suspension Details</strong>
+  <ul style="margin:3px 0 0 0px;">
+    <li><strong>Type:</strong> {{ suspension_type | capitalize }}</li>
+    <li><strong>Duration:</strong> {{ duration_text }}</li>
+  </ul>
+</div>
+
+{% if reasons %}
+<div style="margin:20px 0;">
+  <strong>Reason(s):</strong>
+  <ul style="margin:8px 0 0 0;">
+    {% for reason in reasons %}
+      <li>{{ reason }}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{% if notes %}
+<div class="notice" style="margin:20px 0; text-align:left;">
+  <strong>Additional Notes from Our Team</strong>
+  <p style="margin-top:8px;">{{ notes }}</p>
+</div>
+{% endif %}
+
+<p>
+  During this period, access to certain platform features may be restricted.
+  If you believe this action was taken in error or need clarification, please
+  contact our support team.
+</p>
+
+<p style="margin-top:24px;">
+  Regards,<br />
+  <strong>Academic Hub Trust & Safety Team</strong>
+</p>
+{% endblock %}
