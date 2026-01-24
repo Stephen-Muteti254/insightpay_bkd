@@ -13,6 +13,7 @@ from app.models.chat import Chat
 from app.models.message import Message
 from app.extensions import db
 from app.models.user import User
+from sqlalchemy import func
 
 bp = Blueprint("chat", __name__, url_prefix="/api/v1/chats")
 
@@ -125,9 +126,18 @@ def list_chats():
 
     offset = (page - 1) * limit
 
-    chats_q = Chat.query.filter(
-        (Chat.client_id == uid) | (Chat.writer_id == uid)
-    ).order_by(Chat.created_at.desc()).offset(offset).limit(limit).all()
+    chats_q = (
+        db.session.query(Chat)
+        .outerjoin(Message, Chat.id == Message.chat_id)
+        .filter(
+            (Chat.client_id == uid) | (Chat.writer_id == uid)
+        )
+        .group_by(Chat.id)
+        .order_by(func.max(Message.created_at).desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
 
     out = []
     for chat in chats_q:
@@ -184,7 +194,6 @@ def list_chats():
         "limit": limit,
         "has_more": len(chats_q) == limit
     })
-
 
 
 # -----------------------------------------------------------
