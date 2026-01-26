@@ -56,19 +56,23 @@ def admin_required(user):
 # ------------------------------------------
 # 1. LIST ALL APPLICATIONS (Already implemented)
 # ------------------------------------------
-
 @bp.route("/all", methods=["GET"])
 @jwt_required()
 def list_applications():
     uid = get_jwt_identity()
     user = User.query.get(uid)
+
     if not admin_required(user):
         return error_response("FORBIDDEN", "Admin privileges required", status=403)
 
     status = request.args.get("status")
-    search = request.args.get("search", "").strip().lower()
+    search = request.args.get("search", "").strip()
 
-    query = WriterApplication.query.join(User).order_by(WriterApplication.created_at.desc())
+    query = (
+        db.session.query(WriterApplication, User)
+        .join(User, WriterApplication.user_id == User.id)
+        .order_by(WriterApplication.created_at.desc())
+    )
 
     if status and status != "all":
         query = query.filter(WriterApplication.status == status)
@@ -78,6 +82,7 @@ def list_applications():
             db.or_(
                 WriterApplication.id.ilike(f"%{search}%"),
                 User.full_name.ilike(f"%{search}%"),
+                User.email.ilike(f"%{search}%"),
             )
         )
 
@@ -86,17 +91,18 @@ def list_applications():
     data = [
         {
             "id": a.id,
-            "user_id": a.user_id,
-            "user_name": a.user.full_name,
+            "user_id": u.id,
+            "user_name": u.full_name,
+            "email": u.email,
             "status": a.status,
+            "account_status": u.account_status,
+            "application_status": u.application_status,
             "submitted_at": a.created_at.isoformat(),
         }
-        for a in apps
+        for a, u in apps
     ]
 
     return success_response(data)
-
-
 
 # ------------------------------------------
 # 2. GET APPLICATION DETAILS
