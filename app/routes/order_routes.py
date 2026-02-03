@@ -13,7 +13,10 @@ from app.utils.pagination import paginate_query
 from app.models.order_invitation import OrderInvitation
 from dateutil import parser
 from app.models.bid import Bid
-from app.services.notification_service import send_notification_to_user
+from app.services.notification_service import (
+    send_notification_to_user,
+    send_notification_to_user_without_email
+)
 from sqlalchemy import or_, cast
 from sqlalchemy.types import String
 from app.services.order_service import (
@@ -25,8 +28,10 @@ from app.services.wallet_service import has_sufficient_balance
 from sqlalchemy import func
 
 from app.services.email_service import (
-    send_order_cancelled_email
+    send_order_cancelled_email,
+    send_order_restored_email
 )
+from app.models.submission import Submission
 
 def format_money(value):
     if value is None:
@@ -786,7 +791,7 @@ def cancel_order(order_id):
     data = request.get_json(silent=True) or {}
     reason = (data.get("reason") or "").strip()
 
-    # If a writer is assigned → reason required
+    # If a writer is assigned, reason required
     if order.writer_id and not reason:
         return error_response(
             "REASON_REQUIRED",
@@ -804,7 +809,7 @@ def cancel_order(order_id):
     if order.writer_id:
         writer = User.query.get(order.writer_id)
         if writer:
-            send_notification_to_user(
+            send_notification_to_user_without_email(
                 email=writer.email,
                 title="Order Cancelled",
                 message=f"The client has cancelled order {order.id}. Reason: {reason}",
@@ -825,6 +830,80 @@ def cancel_order(order_id):
         "cancelReason": reason,
         "updatedAt": order.updated_at.isoformat() + "Z"
     })
+
+
+
+# ------------------------------------------------------------
+#  POST /orders/<order_id>/restore — Restore a cancelled order
+# ------------------------------------------------------------
+@bp.route("/<order_id>/restore", methods=["POST"])
+@jwt_required()
+def restore_order(order_id):
+    uid = get_jwt_identity()
+    user = User.query.get(uid)
+    order = Order.query.get(order_id)
+
+    if not order:
+        return error_response("NOT_FOUND", "Order not found", status=404)
+
+    if user.role != "client" or order.client_id != user.id:
+        return error_response(
+            "FORBIDDEN",
+            "Only the client who created the order can restore it",
+            status=403
+        )
+
+    if order.status != "cancelled":
+        return error_response(
+            "INVALID_STATE",
+            "Only cancelled orders can be restored",
+            status=400
+        )
+
+    # Check if submissions existed before cancellation
+    has_submissions = (
+        db.session.query(Submission.id)
+        .filter(Submission.order_id == order.id)
+        .first()
+        is not None
+    )
+
+    restored_status = (
+        "submitted_for_review" if has_submissions else "in_progress"
+    )
+
+    order.status = restored_status
+    order.updated_at = datetime.utcnow()
+    db.session.commit()
+
+    # Notify writer if assigned
+    if order.writer_id:
+        writer = User.query.get(order.writer_id)
+        if writer:
+            send_notification_to_user_without_email(
+                email=writer.email,
+                title="Order Restored",
+                message=(
+                    f"The client has restored order {order.title}. "
+                    "You may continue working on it."
+                ),
+                notif_type="order_restored",
+                details={
+                    "order_id": order.id,
+                    "restored_status": restored_status
+                },
+                sender_id=order.client_id,
+            )
+
+            send_order_restored_email(writer, order, restored_status)
+
+    return success_response({
+        "orderId": order.id,
+        "status": order.status,
+        "message": "Order restored successfully",
+        "updatedAt": order.updated_at.isoformat() + "Z"
+    })
+
 
 
 # ------------------------------------------------------------

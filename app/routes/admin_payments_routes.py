@@ -8,7 +8,10 @@ from app.models.wallet import Wallet
 from app.models.wallet_transaction import WalletTransaction
 from app.models.withdrawal_request import WithdrawalRequest
 from app.utils.response_formatter import success_response, error_response
-from app.services.notification_service import send_notification_to_user
+from app.services.notification_service import (
+    send_notification_to_user,
+    send_notification_to_user_without_email
+)
 import uuid
 from datetime import timezone, datetime
 from app.services.email_service import (
@@ -142,7 +145,7 @@ def admin_approve_withdrawal(wid):
     db.session.add(tx)
     db.session.commit()
 
-    send_notification_to_user(
+    send_notification_to_user_without_email(
         email=wr.user.email,
         title="Withdrawal Paid",
         message=f"Your withdrawal of ${wr.amount:.2f} has been processed.",
@@ -177,7 +180,7 @@ def admin_reject_withdrawal(wid):
     wr.status = "rejected"
     db.session.commit()
 
-    send_notification_to_user(
+    send_notification_to_user_without_email(
         email=wr.user.email,
         title="Withdrawal Rejected",
         message=(

@@ -319,3 +319,31 @@ def send_account_reactivated_email(user):
         current_app.logger.error(
             f"Failed to send reactivation email to {user.email}: {e}"
         )
+
+
+def send_order_restored_email(user, order, restored_status):
+    try:
+        dashboard_url = (
+            f"{current_app.config['FRONTEND_URL']}/writer/orders/in-progress/all"
+        )
+
+        html = render_template(
+            "emails/order_restored.html",
+            title="Order Restored",
+            full_name=user.full_name,
+            order_title=order.title,
+            restored_status=restored_status,
+            dashboard_url=dashboard_url,
+            company_name=COMPANY_NAME,
+            year=datetime.utcnow().year,
+        )
+
+        send_email(
+            to=user.email,
+            subject=f"Order {order.title} has been restored",
+            html=html
+        )
+    except Exception as e:
+        current_app.logger.error(
+            f"Failed to send order restored email to {user.email}: {e}"
+        )

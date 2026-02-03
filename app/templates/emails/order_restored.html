@@ -1,0 +1,29 @@
+{% extends "emails/base.html" %}
+
+{% block content %}
+<p>Hello <strong>{{ full_name }}</strong>,</p>
+
+<p>
+  The client has restored the previously cancelled order
+  <strong>{{ order_title }}</strong>.
+</p>
+
+<div class="notice" style="margin:16px 0;">
+  <strong>Current status:</strong>
+  {{ restored_status.replace("_", " ").title() }}
+</div>
+
+<p>
+  You may now continue working on this order or respond to the existing submission.
+</p>
+
+<div style="text-align:center; margin:24px 0;">
+  <a href="{{ dashboard_url }}" class="btn-primary">View Order</a>
+</div>
+
+<p>
+  If you have any questions or concerns, feel free to reach out through the platform.
+</p>
+
+<p>Best regards,<br /><strong>{{ company_name }} Team</strong></p>
+{% endblock %}

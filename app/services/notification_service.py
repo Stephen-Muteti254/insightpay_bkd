@@ -26,6 +26,35 @@ ROLE_MAP = {
 }
 
 
+def send_notification_to_user_without_email(
+    email,
+    title,
+    message,
+    notif_type="info",
+    details=None,
+    sender_id=None,
+    sender_team="Support Team"
+):
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return None
+
+    notif = Notification(
+        sender_id=sender_id,
+        user_email=email,
+        target_type="individual",
+        type=notif_type,
+        title=title,
+        message=message,
+        details=details,
+        created_at=datetime.utcnow(),
+    )
+    db.session.add(notif)
+    db.session.commit()
+
+    return notif
+
+
 def send_notification_to_user(
     email,
     title,
