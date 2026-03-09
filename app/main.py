@@ -29,6 +29,7 @@ def create_app(config_name=None):
         Config.SUPPORT_UPLOADS_FOLDER,
         Config.PROFILES_FOLDER,
         Config.CAREERS_UPLOAD_FOLDER,
+        Config.INSIGHTPAY_SURVEY_UPLOADS_FOLDER,
     ]
 
     for path in UPLOAD_DIRS:
@@ -75,6 +76,10 @@ def create_app(config_name=None):
     from app.routes.submission_routes import bp as submission_bp
     from app.routes.support_chat_routes import bp as support_chat_bp
     from app.routes.career_routes import bp as career_bp
+    from insightpay.routes.auth_routes import bp as insightpay_auth_bp
+    from insightpay.routes.application_routes import bp as insightpay_application_bp
+    from insightpay.routes.survey_routes import bp as insightpay_surveys_bp
+    from insightpay.routes.survey_routes import user_surveys_bp as insightpay_user_surveys_bp
 
     # available orders optional
     try:
@@ -99,6 +104,10 @@ def create_app(config_name=None):
     app.register_blueprint(submission_bp)
     app.register_blueprint(support_chat_bp)
     app.register_blueprint(career_bp)
+    app.register_blueprint(insightpay_auth_bp)
+    app.register_blueprint(insightpay_application_bp)
+    app.register_blueprint(insightpay_surveys_bp)
+    app.register_blueprint(insightpay_user_surveys_bp)
 
     # error handlers to match required error format
     from app.utils.response_formatter import error_response

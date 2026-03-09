@@ -1,0 +1,13 @@
+{% extends "insightpay/base.html" %}
+
+{% block content %}
+<p>Hello <strong>{{ full_name }}</strong>,</p>
+
+<p>Use the verification code below to confirm your InsightPay email address.</p>
+
+<div class="otp">{{ otp }}</div>
+
+<p>This code expires in <strong>{{ expires_in }} minutes</strong>.</p>
+
+<p>If you didn’t request this, you can safely ignore this email.</p>
+{% endblock %}

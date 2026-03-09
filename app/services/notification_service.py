@@ -81,12 +81,12 @@ def send_notification_to_user(
     db.session.add(notif)
     db.session.commit()
 
-    send_notification_email(
-        user,
-        title,
-        message,
-        sender_team=sender_team
-    )
+    # send_notification_email(
+    #     user,
+    #     title,
+    #     message,
+    #     sender_team=sender_team
+    # )
 
     return notif
 

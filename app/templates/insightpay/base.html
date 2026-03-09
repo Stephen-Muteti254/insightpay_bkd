@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>{{ title }}</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f7fa; padding: 20px; }
+    .container { max-width: 600px; margin: auto; background: #fff; border-radius: 8px; overflow: hidden; }
+    .header { background: #0f172a; color: #fff; padding: 20px; text-align: center; font-weight: bold; }
+    .content { padding: 32px 24px; color: #374151; font-size: 14px; }
+    .otp { font-size: 28px; letter-spacing: 6px; font-weight: bold; text-align: center; margin: 24px 0; }
+    .footer { padding: 16px; font-size: 12px; text-align: center; color: #6b7280; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">{{ company_name }}</div>
+    <div class="content">
+      {% block content %}{% endblock %}
+    </div>
+    <div class="footer">
+      © {{ year }} {{ company_name }} · Do not reply
+    </div>
+  </div>
+</body>
+</html>
