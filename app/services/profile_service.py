@@ -9,8 +9,17 @@ from sqlalchemy.orm import aliased
 from sqlalchemy import case
 from sqlalchemy import func, desc, case, or_
 
+from sqlalchemy import func, desc, case, or_
+from app.extensions import db
+from app.models.user import User
+from app.models.review import Review
+from app.models.order import Order
+from app.models.writer_application import WriterApplication
+
+
 def build_leaderboard(limit=None):
-    subquery = (
+
+    review_subq = (
         db.session.query(
             Review.reviewee_id.label("writer_id"),
             func.avg(Review.rating).label("avg_rating"),
@@ -19,11 +28,21 @@ def build_leaderboard(limit=None):
         .subquery()
     )
 
-    orders_count = func.count(Order.id)
+    completed_orders = func.sum(
+        case((Order.status == "completed", 1), else_=0)
+    ).label("completed_orders")
+
+    cancelled_orders = func.sum(
+        case((Order.status == "cancelled", 1), else_=0)
+    ).label("cancelled_orders")
+
+    total_assigned = func.sum(
+        case((Order.status.in_(["completed", "cancelled"]), 1), else_=0)
+    ).label("total_assigned")
 
     rating_col = case(
-        (orders_count == 0, 5),
-        else_=func.coalesce(subquery.c.avg_rating, 0)
+        (completed_orders == 0, 5),
+        else_=func.coalesce(review_subq.c.avg_rating, 0)
     ).label("rating")
 
     q = (
@@ -33,14 +52,13 @@ def build_leaderboard(limit=None):
             User.profile_image,
             WriterApplication.specialization,
             rating_col,
-            orders_count.label("orders_completed"),
+            completed_orders,
+            cancelled_orders,
+            total_assigned,
         )
         .join(WriterApplication, WriterApplication.user_id == User.id)
-        .outerjoin(subquery, subquery.c.writer_id == User.id)
-        .outerjoin(
-            Order,
-            (Order.writer_id == User.id) & (Order.status == "completed")
-        )
+        .outerjoin(review_subq, review_subq.c.writer_id == User.id)
+        .outerjoin(Order, Order.writer_id == User.id)
         .filter(
             WriterApplication.status == "approved",
             or_(
@@ -53,11 +71,11 @@ def build_leaderboard(limit=None):
             User.full_name,
             User.profile_image,
             WriterApplication.specialization,
-            subquery.c.avg_rating
+            review_subq.c.avg_rating
         )
         .order_by(
             desc(rating_col),
-            desc(orders_count),
+            desc(completed_orders),
             User.full_name
         )
     )

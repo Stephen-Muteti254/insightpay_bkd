@@ -146,14 +146,19 @@ def get_leaderboard():
 
     leaderboard = []
     for index, r in enumerate(results, start=1):
+
+        completed = r.completed_orders or 0
+        total = r.total_assigned or 0
+        success_rate = round((completed / total) * 100, 2) if total > 0 else 0.0
+
         leaderboard.append({
             "rank": index,
             "id": r.id,
             "name": r.full_name,
             "avatar": r.profile_image,
             "rating": round(float(r.rating), 2),
-            "ordersCompleted": r.orders_completed,
-            "successRate": 100.0,
+            "ordersCompleted": completed,
+            "successRate": success_rate,
             "specialization": r.specialization,
             "level": get_writer_level(index),
         })
@@ -169,11 +174,15 @@ def get_my_leaderboard_position():
     
     for index, r in enumerate(results, start=1):
         if r.id == uid:
+            completed = r.completed_orders or 0
+            total = r.total_assigned or 0
+            success_rate = round((completed / total) * 100, 2) if total > 0 else 0.0
             return success_response({
                 "id": r.id,
                 "rank": index,
                 "rating": round(float(r.rating), 2),
-                "ordersCompleted": r.orders_completed,
+                "ordersCompleted": completed,
+                "successRate": success_rate,
                 "name": r.full_name,
             })
 
