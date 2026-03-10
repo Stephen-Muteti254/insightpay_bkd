@@ -948,21 +948,43 @@ def review_writer(order_id):
 
     if order.client_id != user.id:
         return error_response("FORBIDDEN", "You do not own this order", 403)
-    if order.status != "completed":
-        return error_response("INVALID_STATE", "You can only review completed orders", 400)
+
+    # Allow review if:
+    # 1. Order completed
+    # 2. Order cancelled but writer was assigned
+    can_review = (
+        order.status == "completed"
+        or (order.status == "cancelled" and order.writer_id is not None)
+    )
+
+    if not can_review:
+        return error_response(
+            "INVALID_STATE",
+            "You can only review completed orders or cancelled orders that had an assigned writer",
+            400,
+        )
+
     if not order.writer_id:
         return error_response("INVALID_STATE", "This order has no writer to review", 400)
+
     if Review.query.filter_by(order_id=order.id).first():
         return error_response("DUPLICATE", "You have already reviewed this order", 400)
 
     data = request.get_json() or {}
     rating = data.get("rating")
     review_text = data.get("review")
+
     if not isinstance(rating, int) or rating < 1 or rating > 5:
-        return error_response("VALIDATION_ERROR", "Rating must be an integer between 1 and 5", 400)
+        return error_response(
+            "VALIDATION_ERROR",
+            "Rating must be an integer between 1 and 5",
+            400,
+        )
 
     try:
-        # Add the review
+        print(f"[REVIEW] Client {user.id} reviewing writer {order.writer_id} for order {order.id}")
+
+        # Add review
         review = Review(
             order_id=order.id,
             reviewer_id=user.id,
@@ -970,26 +992,38 @@ def review_writer(order_id):
             rating=rating,
             review=review_text
         )
-        db.session.add(review)
-        db.session.flush()  # ensures review exists in DB for avg calculation
 
-        # Update writer aggregates
+        db.session.add(review)
+        db.session.flush()
+
         writer = User.query.get(order.writer_id)
+
+        # Recalculate writer rating
         avg_rating = db.session.query(func.avg(Review.rating))\
             .filter(Review.reviewee_id == writer.id)\
             .scalar()
-        writer.rating = round(avg_rating or 0, 2)
-        writer.completed_orders += 1
 
-        # Commit all changes at once
+        writer.rating = round(avg_rating or 0, 2)
+
+        # Only increment completed orders if order was actually completed
+        if order.status == "completed":
+            writer.completed_orders += 1
+
         db.session.commit()
+
+        print(f"[REVIEW SUCCESS] Order {order.id} review stored")
 
         return success_response({"message": "Review submitted successfully"})
 
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"Failed to submit review for order {order.id}: {str(e)}")
-        return error_response("REVIEW_FAILED", "Failed to submit review", 500)
+        print(f"[REVIEW ERROR] Failed to submit review for order {order.id}: {str(e)}")
+
+        return error_response(
+            "REVIEW_FAILED",
+            "Failed to submit review",
+            500
+        )
 
 @bp.route("/<order_id>/has_review", methods=["GET"])
 @jwt_required()
