@@ -27,5 +27,5 @@ class SurveyAttachment(db.Model):
             "name": self.name,
             "type": self.type,
             "size": self.size,
-            "url": self.url,
+            "url": f"/surveys/attachments/{self.id}",
         }

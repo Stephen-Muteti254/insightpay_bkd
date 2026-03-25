@@ -5,15 +5,20 @@ from flask import (
     send_from_directory,
     current_app,
     abort,
+    send_file
 )
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from insightpay.services.survey_service import SurveyService
 from insightpay.models.survey import Survey
 from insightpay.utils.admin_required import admin_required
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.extensions import db
 from insightpay.models.survey_attempt import SurveyAttempt
+from insightpay.models.survey_attachment import SurveyAttachment
 from insightpay.models.user import InsightPayUser
+import os
+from pathlib import Path
+from insightpay.models.insightpay_transaction import InsightPayTransaction
 
 bp = Blueprint(
     "insightpay_surveys",
@@ -67,6 +72,20 @@ def update_survey(survey_id):
 @admin_required
 def delete_survey(survey_id):
     survey = Survey.query.get_or_404(survey_id)
+
+    now = datetime.now(timezone.utc)
+
+    # Count active attempts that have not yet expired
+    active_attempts = SurveyAttempt.query.filter(
+        SurveyAttempt.survey_id == survey.id,
+        SurveyAttempt.expires_at > now,  # attempt not yet expired
+        SurveyAttempt.status == "active"  # optional, if you track status
+    ).count()
+
+    if active_attempts > 0:
+        abort(400, "Cannot delete survey with ongoing attempts")
+
+    # Safe to delete survey
     SurveyService.delete_survey(survey)
 
     return jsonify({"success": True})
@@ -78,46 +97,79 @@ user_surveys_bp = Blueprint(
     url_prefix="/api/insightpay/surveys"
 )
 
-@user_surveys_bp.route("/<survey_id>/complete", methods=["POST"])
+
+@user_surveys_bp.route("/surveys/<survey_id>/complete", methods=["POST"])
 @jwt_required()
 def complete_survey(survey_id):
-    user_id = get_jwt_identity()
-    now = datetime.utcnow()
 
-    attempt = (
-        SurveyAttempt.query
-        .filter_by(
-            user_id=user_id,
-            survey_id=survey_id,
-            status="active"
+    user_id = get_jwt_identity()
+    data = request.json or {}
+    answers = data.get("answers", {})
+
+    # Always use timezone-aware UTC
+    now = datetime.now(timezone.utc)
+
+    attempt = SurveyAttempt.query.filter_by(
+        survey_id=survey_id,
+        user_id=user_id,
+        status="active"
+    ).first_or_404()
+
+    # Normalize expires_at in case DB returned naive datetime
+    expires_at = attempt.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    # Expiration check
+    if now > expires_at:
+        attempt.status = "expired"
+        db.session.commit()
+        return {"message": "Survey expired"}, 400
+
+    # Save survey responses
+    responses = []
+
+    for question_id, value in answers.items():
+        responses.append(
+            SurveyResponse(
+                attempt_id=attempt.id,
+                question_id=question_id,
+                answer=value
+            )
         )
-        .first_or_404()
+
+    db.session.bulk_save_objects(responses)
+
+    # Mark attempt completed
+    attempt.completed_at = now
+    attempt.status = "completed"
+
+    reward = attempt.reward_snapshot
+
+    # Record financial transaction
+    txn = InsightPayTransaction(
+        user_id=user_id,
+        amount=reward,
+        type="survey_reward_pending",
+        status="pending",
+        reference_id=attempt.id,
+        description="Survey reward"
     )
 
-    if now > attempt.expires_at:
-        attempt.status = "expired"
+    db.session.add(txn)
 
-        survey = Survey.query.get(survey_id)
-        survey.slots_remaining += 1
-
-        db.session.commit()
-        abort(400, "Survey time expired")
-
-    attempt.status = "completed"
-    attempt.completed_at = now
-
-    # credit reward
+    # Credit user balance
     user = InsightPayUser.query.get_or_404(user_id)
-    user.pending_balance += attempt.reward_snapshot
+    user.pending_balance += reward
 
     db.session.commit()
 
-    return jsonify({
+    return {
         "success": True,
         "data": {
-            "rewardCredited": float(attempt.reward_snapshot)
+            "rewardCredited": float(reward)
         }
-    })
+    }
 
 
 @user_surveys_bp.route("/<survey_id>/start", methods=["POST"])
@@ -144,7 +196,7 @@ def start_survey(survey_id):
     if survey.slots_remaining <= 0:
         abort(400, "No slots remaining")
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     expires_at = now + timedelta(minutes=survey.duration_minutes)
 
     survey.slots_remaining -= 1
@@ -162,7 +214,7 @@ def start_survey(survey_id):
     return jsonify({
         "success": True,
         "attempt": {
-            "expiresAt": expires_at.isoformat() + "Z"
+            "expiresAt": expires_at.isoformat().replace("+00:00", "Z")
         }
     })
 
@@ -177,11 +229,33 @@ def list_active_surveys():
         "data": [s.to_dict() for s in surveys]
     })
 
-@user_surveys_bp.route("/attachments/<path:filename>", methods=["GET"])
+
+@user_surveys_bp.route("/attachments/<attachment_id>", methods=["GET"])
 @jwt_required()
-def get_survey_attachment(filename):
-    root = current_app.config["UPLOAD_ROOT"]
-    return send_from_directory(root, filename, as_attachment=False)
+def get_survey_attachment(attachment_id):
+
+    attachment = SurveyAttachment.query.get_or_404(attachment_id)
+
+    root = current_app.config["INSIGHTPAY_SURVEY_UPLOADS_FOLDER"]
+
+    # normalize stored path
+    relative_path = Path(attachment.url).as_posix()
+
+    file_path = os.path.abspath(os.path.join(root, relative_path))
+
+    print("ROOT:", root)
+    print("REL:", relative_path)
+    print("FULL:", file_path)
+    print("EXISTS:", os.path.exists(file_path))
+
+    if not os.path.exists(file_path):
+        abort(404, "File not found")
+
+    return send_file(
+        file_path,
+        mimetype=attachment.type,
+        as_attachment=False
+    )
 
 
 @user_surveys_bp.route("/<survey_id>", methods=["GET"])

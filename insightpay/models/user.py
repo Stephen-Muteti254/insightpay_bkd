@@ -4,10 +4,8 @@ from datetime import datetime
 import uuid
 from werkzeug.security import generate_password_hash, check_password_hash
 
-
 def gen_uuid(prefix="usr"):
     return f"{prefix}_{uuid.uuid4()}"
-
 
 class InsightPayUser(db.Model):
     __tablename__ = "insightpay_users"
@@ -18,16 +16,14 @@ class InsightPayUser(db.Model):
     name = db.Column(db.String(255), nullable=False)
 
     email_verified = db.Column(db.Boolean, default=False)
-
-    status = db.Column(
-        db.String(50),
-        default="email_unverified",
-        nullable=False
-    )
-
+    status = db.Column(db.String(50), default="email_unverified", nullable=False)
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # --- balance tracking ---
+    available_balance = db.Column(db.Float, default=0.0, nullable=False)
+    pending_balance = db.Column(db.Float, default=0.0, nullable=False)
 
     # ---- password helpers ----
     def set_password(self, password: str):
@@ -45,5 +41,7 @@ class InsightPayUser(db.Model):
             "emailVerified": self.email_verified,
             "status": self.status,
             "isAdmin": self.is_admin,
+            "availableBalance": float(self.available_balance),
+            "pendingBalance": float(self.pending_balance),
             "createdAt": self.created_at.isoformat() + "Z",
         }

@@ -80,6 +80,9 @@ def create_app(config_name=None):
     from insightpay.routes.application_routes import bp as insightpay_application_bp
     from insightpay.routes.survey_routes import bp as insightpay_surveys_bp
     from insightpay.routes.survey_routes import user_surveys_bp as insightpay_user_surveys_bp
+    from insightpay.routes.admin import admin_bp as insightpay_admin_bp
+    from insightpay.routes.wallet_routes import bp as insightpay_wallet_bp
+    from insightpay.routes.dashboard_routes import bp as insightpay_dashboard_bp
 
     # available orders optional
     try:
@@ -108,6 +111,9 @@ def create_app(config_name=None):
     app.register_blueprint(insightpay_application_bp)
     app.register_blueprint(insightpay_surveys_bp)
     app.register_blueprint(insightpay_user_surveys_bp)
+    app.register_blueprint(insightpay_admin_bp)
+    app.register_blueprint(insightpay_wallet_bp)
+    app.register_blueprint(insightpay_dashboard_bp)
 
     # error handlers to match required error format
     from app.utils.response_formatter import error_response

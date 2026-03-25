@@ -16,4 +16,4 @@ def save_survey_attachment(file, survey_id):
     file.save(full_path)
 
     # store RELATIVE path in DB (important)
-    return f"surveys/{survey_id}/{unique_name}", file.content_type, os.path.getsize(full_path)
+    return f"{survey_id}/{unique_name}", file.content_type, os.path.getsize(full_path)
