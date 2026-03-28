@@ -98,7 +98,7 @@ user_surveys_bp = Blueprint(
 )
 
 
-@user_surveys_bp.route("/surveys/<survey_id>/complete", methods=["POST"])
+@user_surveys_bp.route("/<survey_id>/complete", methods=["POST"])
 @jwt_required()
 def complete_survey(survey_id):
 

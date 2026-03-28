@@ -29,9 +29,9 @@ class Config:
     REFRESH_EXPIRES = int(os.getenv("REFRESH_EXPIRES", 86400))
     basedir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
-    # UPLOAD_ROOT = os.getenv("UPLOAD_ROOT", "/var/data/uploads")
+    UPLOAD_ROOT = os.getenv("UPLOAD_ROOT", "/var/data/uploads")
     # UPLOAD_ROOT = os.getenv("UPLOAD_ROOT", "uploads")
-    UPLOAD_ROOT = os.getenv("UPLOAD_ROOT", os.path.join(basedir, "uploads"))
+    # UPLOAD_ROOT = os.getenv("UPLOAD_ROOT", os.path.join(basedir, "uploads"))
 
     UPLOAD_FOLDER = os.path.join(UPLOAD_ROOT, "applications")
     ORDERS_FOLDER = os.path.join(UPLOAD_ROOT, "orders")
